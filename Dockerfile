@@ -15,10 +15,20 @@ ARG USER=geoserveruser
 ARG GROUP_NAME=geoserverusers
 ARG HTTPS_PORT=8443
 
+
 #Install extra fonts to use with sld font markers
+
 RUN apt-get -y update; apt-get -y --no-install-recommends install fonts-cantarell lmodern ttf-aenigma \
     ttf-georgewilliams ttf-bitstream-vera ttf-sjfonts tv-fonts  libapr1-dev libssl-dev  \
-    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet
+    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet \
+    export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s` \
+    echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -  \
+    apt-get update \
+    apt-get install gcsfuse
+   
+RUN mkdir /opt/geoserver/data_dir/geomanguera \
+    gcsfuse geomanguera /opt/geoserver/data_dir/geomanguera
 
 RUN set -e \
     export DEBIAN_FRONTEND=noninteractive \
