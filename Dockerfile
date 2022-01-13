@@ -17,18 +17,9 @@ ARG HTTPS_PORT=8443
 
 
 #Install extra fonts to use with sld font markers
-
 RUN apt-get -y update; apt-get -y --no-install-recommends install fonts-cantarell lmodern ttf-aenigma \
     ttf-georgewilliams ttf-bitstream-vera ttf-sjfonts tv-fonts  libapr1-dev libssl-dev  \
-    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet \
-    export GCSFUSE_REPO=gcsfuse-`lsb_release -c -s` \
-    echo "deb http://packages.cloud.google.com/apt $GCSFUSE_REPO main" | tee /etc/apt/sources.list.d/gcsfuse.list \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -  \
-    apt-get update \
-    apt-get install gcsfuse
-   
-RUN mkdir /opt/geoserver/data_dir/geomanguera \
-    gcsfuse geomanguera /opt/geoserver/data_dir/geomanguera
+    gdal-bin libgdal-java wget zip unzip curl xsltproc certbot  cabextract gettext postgresql-client figlet 
 
 RUN set -e \
     export DEBIAN_FRONTEND=noninteractive \
@@ -36,6 +27,26 @@ RUN set -e \
     && (echo "Yes, do as I say!" | apt-get remove --force-yes login) \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+
+ENV MNT_DIR /opt/geoserver/data_dir/geomanguera
+
+# Install system dependencies
+RUN set -e; \
+    apt-get update -y && apt-get install -y \
+    gnupg \
+    tini \
+    lsb-release; \
+    gcsFuseRepo=gcsfuse-`lsb_release -c -s`; \
+    echo "deb http://packages.cloud.google.com/apt $gcsFuseRepo main" | \
+    tee /etc/apt/sources.list.d/gcsfuse.list; \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+    apt-key add -; \
+    apt-get update; \
+    apt-get install -y gcsfuse \
+    && apt-get clean
+
+
 
 ENV \
     JAVA_HOME=${JAVA_HOME} \
@@ -52,9 +63,17 @@ ENV \
     EXTRA_CONFIG_DIR=/settings
 
 
+
 WORKDIR /scripts
 RUN groupadd -r ${GROUP_NAME} -g ${GEOSERVER_GID} && \
     useradd -m -d /home/${USER}/ -u ${GEOSERVER_UID} --gid ${GEOSERVER_GID} -s /bin/bash -G ${GROUP_NAME} ${USER}
+
+RUN mkdir -p $MNT_DIR; \
+    chmod 777 $MNT_DIR; \
+    echo "Mounting GCS Fuse."; \
+    gcsfuse --debug_gcs --debug_fuse geomanguera $MNT_DIR; \
+    echo "Mounting completed.";
+
 RUN mkdir -p  ${GEOSERVER_DATA_DIR} ${CERT_DIR} ${FOOTPRINTS_DATA_DIR} ${FONTS_DIR} \
              ${GEOWEBCACHE_CACHE_DIR} ${GEOSERVER_HOME} ${EXTRA_CONFIG_DIR} /community_plugins /stable_plugins \
            /plugins /geo_data
